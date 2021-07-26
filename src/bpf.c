@@ -56,7 +56,7 @@
 
 static inline __u64 ptr_to_u64(const void *ptr)
 {
-	return (__u64) (unsigned long) ptr;
+	return (__u64)(uintptr_t)ptr;
 }
 
 static inline int sys_bpf(enum bpf_cmd cmd, union bpf_attr *attr,
@@ -111,7 +111,7 @@ int bpf_create_map_node(enum bpf_map_type map_type, const char *name,
 			int key_size, int value_size, int max_entries,
 			__u32 map_flags, int node)
 {
-	struct bpf_create_map_attr map_attr = {};
+	struct bpf_create_map_attr map_attr = {0};
 
 	map_attr.name = name;
 	map_attr.map_type = map_type;
@@ -130,7 +130,7 @@ int bpf_create_map_node(enum bpf_map_type map_type, const char *name,
 int bpf_create_map(enum bpf_map_type map_type, int key_size,
 		   int value_size, int max_entries, __u32 map_flags)
 {
-	struct bpf_create_map_attr map_attr = {};
+	struct bpf_create_map_attr map_attr = {0};
 
 	map_attr.map_type = map_type;
 	map_attr.map_flags = map_flags;
@@ -145,7 +145,7 @@ int bpf_create_map_name(enum bpf_map_type map_type, const char *name,
 			int key_size, int value_size, int max_entries,
 			__u32 map_flags)
 {
-	struct bpf_create_map_attr map_attr = {};
+	struct bpf_create_map_attr map_attr = {0};
 
 	map_attr.name = name;
 	map_attr.map_type = map_type;
@@ -200,7 +200,7 @@ alloc_zero_tailing_info(const void *orecord, __u32 cnt,
 {
 	__u64 info_len = (__u64)actual_rec_size * cnt;
 	void *info, *nrecord;
-	int i;
+	__u32 i;
 
 	info = malloc(info_len);
 	if (!info)
@@ -210,10 +210,10 @@ alloc_zero_tailing_info(const void *orecord, __u32 cnt,
 	nrecord = info;
 	for (i = 0; i < cnt; i++) {
 		memcpy(nrecord, orecord, expected_rec_size);
-		memset(nrecord + expected_rec_size, 0,
+		memset((char*)nrecord + expected_rec_size, 0,
 		       actual_rec_size - expected_rec_size);
-		orecord += actual_rec_size;
-		nrecord += actual_rec_size;
+		orecord = (const char*)orecord + actual_rec_size;
+		nrecord = (char*)nrecord + actual_rec_size;
 	}
 
 	return info;
@@ -335,7 +335,7 @@ done:
 int bpf_load_program_xattr(const struct bpf_load_program_attr *load_attr,
 			   char *log_buf, size_t log_buf_sz)
 {
-	struct bpf_prog_load_params p = {};
+	struct bpf_prog_load_params p = {0};
 
 	if (!load_attr || !log_buf != !log_buf_sz)
 		return libbpf_err(-EINVAL);
@@ -976,7 +976,7 @@ int bpf_raw_tracepoint_open(const char *name, int prog_fd)
 int bpf_load_btf(const void *btf, __u32 btf_size, char *log_buf, __u32 log_buf_size,
 		 bool do_log)
 {
-	union bpf_attr attr = {};
+	union bpf_attr attr = {0};
 	int fd;
 
 	attr.btf = ptr_to_u64(btf);
@@ -1003,7 +1003,7 @@ int bpf_task_fd_query(int pid, int fd, __u32 flags, char *buf, __u32 *buf_len,
 		      __u32 *prog_id, __u32 *fd_type, __u64 *probe_offset,
 		      __u64 *probe_addr)
 {
-	union bpf_attr attr = {};
+	union bpf_attr attr = {0};
 	int err;
 
 	attr.task_fd_query.pid = pid;

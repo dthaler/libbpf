@@ -148,7 +148,7 @@ static void pr_perm_msg(int err)
 
 static inline __u64 ptr_to_u64(const void *ptr)
 {
-	return (__u64) (unsigned long) ptr;
+	return (__u64) (intptr_t) ptr;
 }
 
 /* this goes away in libbpf 1.0 */
@@ -721,7 +721,7 @@ bpf_object__add_programs(struct bpf_object *obj, Elf_Data *sec_data,
 		prog = &progs[nr_progs];
 
 		err = bpf_object__init_prog(obj, prog, name, sec_idx, sec_name,
-					    sec_off, data + sec_off, prog_sz);
+					    sec_off, (char*)data + sec_off, prog_sz);
 		if (err)
 			return err;
 
@@ -885,7 +885,7 @@ static int bpf_map__init_kern_struct_ops(struct bpf_map *map,
 
 	data = st_ops->data;
 	kern_data_off = kern_data_member->offset / 8;
-	kern_data = st_ops->kern_vdata + kern_data_off;
+	kern_data = (char*)st_ops->kern_vdata + kern_data_off;
 
 	member = btf_members(type);
 	for (i = 0; i < btf_vlen(type); i++, member++) {
@@ -916,8 +916,8 @@ static int bpf_map__init_kern_struct_ops(struct bpf_map *map,
 		moff = member->offset / 8;
 		kern_moff = kern_member->offset / 8;
 
-		mdata = data + moff;
-		kern_mdata = kern_data + kern_moff;
+		mdata = (char*)data + moff;
+		kern_mdata = (char*)kern_data + kern_moff;
 
 		mtype = skip_mods_and_typedefs(btf, member->type, &mtype_id);
 		kern_mtype = skip_mods_and_typedefs(kern_btf, kern_member->type,
@@ -1082,7 +1082,7 @@ static int bpf_object__init_struct_ops_maps(struct bpf_object *obj)
 		}
 
 		memcpy(st_ops->data,
-		       obj->efile.st_ops_data->d_buf + vsi->offset,
+		       (char*)obj->efile.st_ops_data->d_buf + vsi->offset,
 		       type->size);
 		st_ops->tname = tname;
 		st_ops->type = type;
@@ -1688,7 +1688,7 @@ static int bpf_object__process_kconfig_line(struct bpf_object *obj,
 	if (!ext || ext->is_set)
 		return 0;
 
-	ext_val = data + ext->kcfg.data_off;
+	ext_val = (char*)data + ext->kcfg.data_off;
 	value = sep + 1;
 
 	switch (*value) {
@@ -1902,7 +1902,7 @@ static int bpf_object__init_user_maps(struct bpf_object *obj, bool strict)
 			return -ENOMEM;
 		}
 		pr_debug("map %d is \"%s\"\n", i, map->name);
-		def = (struct bpf_map_def *)(data->d_buf + sym.st_value);
+		def = (struct bpf_map_def *)((char*)data->d_buf + sym.st_value);
 		/*
 		 * If the definition of the map in the object file fits in
 		 * bpf_map_def, copy it.  Any extra fields in our version
@@ -2308,7 +2308,7 @@ static int bpf_object__init_user_btf_map(struct bpf_object *obj,
 					 const Elf_Data *data, bool strict,
 					 const char *pin_root_path)
 {
-	struct btf_map_def map_def = {}, inner_def = {};
+	struct btf_map_def map_def = {0}, inner_def = {0};
 	const struct btf_type *var, *def;
 	const struct btf_var_secinfo *vi;
 	const struct btf_var *var_extra;
@@ -2461,10 +2461,10 @@ static int bpf_object__init_maps(struct bpf_object *obj,
 	pin_root_path = OPTS_GET(opts, pin_root_path, NULL);
 
 	err = bpf_object__init_user_maps(obj, strict);
-	err = err ?: bpf_object__init_user_btf_maps(obj, strict, pin_root_path);
-	err = err ?: bpf_object__init_global_data_maps(obj);
-	err = err ?: bpf_object__init_kconfig_map(obj);
-	err = err ?: bpf_object__init_struct_ops_maps(obj);
+	err = err ? err : bpf_object__init_user_btf_maps(obj, strict, pin_root_path);
+	err = err ? err : bpf_object__init_global_data_maps(obj);
+	err = err ? err : bpf_object__init_kconfig_map(obj);
+	err = err ? err : bpf_object__init_struct_ops_maps(obj);
 
 	return err;
 }
@@ -3829,7 +3829,7 @@ bpf_object__collect_prog_relos(struct bpf_object *obj, GElf_Shdr *shdr, Elf_Data
 			sym_name = elf_sec_name(obj, elf_sec_by_idx(obj, sym.st_shndx));
 		else
 			sym_name = elf_sym_str(obj, sym.st_name);
-		sym_name = sym_name ?: "<?";
+		sym_name = sym_name ? sym_name : "<?";
 
 		pr_debug("sec '%s': relo #%d: insn #%u against '%s'\n",
 			 relo_sec_name, i, insn_idx, sym_name);
@@ -7589,12 +7589,12 @@ __bpf_object__open(const char *path, const void *obj_buf, size_t obj_buf_sz,
 	}
 
 	err = bpf_object__elf_init(obj);
-	err = err ? : bpf_object__check_endianness(obj);
-	err = err ? : bpf_object__elf_collect(obj);
-	err = err ? : bpf_object__collect_externs(obj);
-	err = err ? : bpf_object__finalize_btf(obj);
-	err = err ? : bpf_object__init_maps(obj, opts);
-	err = err ? : bpf_object__collect_relos(obj);
+	err = err ? err : bpf_object__check_endianness(obj);
+	err = err ? err : bpf_object__elf_collect(obj);
+	err = err ? err : bpf_object__collect_externs(obj);
+	err = err ? err : bpf_object__finalize_btf(obj);
+	err = err ? err : bpf_object__init_maps(obj, opts);
+	err = err ? err : bpf_object__collect_relos(obj);
 	if (err)
 		goto out;
 	bpf_object__elf_finish(obj);
@@ -8045,14 +8045,14 @@ int bpf_object__load_xattr(struct bpf_object_load_attr *attr)
 		bpf_gen__init(obj->gen_loader, attr->log_level);
 
 	err = bpf_object__probe_loading(obj);
-	err = err ? : bpf_object__load_vmlinux_btf(obj, false);
-	err = err ? : bpf_object__resolve_externs(obj, obj->kconfig);
-	err = err ? : bpf_object__sanitize_and_load_btf(obj);
-	err = err ? : bpf_object__sanitize_maps(obj);
-	err = err ? : bpf_object__init_kern_struct_ops_maps(obj);
-	err = err ? : bpf_object__create_maps(obj);
-	err = err ? : bpf_object__relocate(obj, attr->target_btf_path);
-	err = err ? : bpf_object__load_progs(obj, attr->log_level);
+	err = err ? err : bpf_object__load_vmlinux_btf(obj, false);
+	err = err ? err : bpf_object__resolve_externs(obj, obj->kconfig);
+	err = err ? err : bpf_object__sanitize_and_load_btf(obj);
+	err = err ? err : bpf_object__sanitize_maps(obj);
+	err = err ? err : bpf_object__init_kern_struct_ops_maps(obj);
+	err = err ? err : bpf_object__create_maps(obj);
+	err = err ? err : bpf_object__relocate(obj, attr->target_btf_path);
+	err = err ? err : bpf_object__load_progs(obj, attr->log_level);
 
 	if (obj->gen_loader) {
 		/* reset FDs */

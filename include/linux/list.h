@@ -8,8 +8,8 @@
         struct list_head name = LIST_HEAD_INIT(name)
 
 #define POISON_POINTER_DELTA 0
-#define LIST_POISON1  ((void *) 0x100 + POISON_POINTER_DELTA)
-#define LIST_POISON2  ((void *) 0x200 + POISON_POINTER_DELTA)
+#define LIST_POISON1  ((char *) 0x100 + POISON_POINTER_DELTA)
+#define LIST_POISON2  ((char *) 0x200 + POISON_POINTER_DELTA)
 
 
 static inline void INIT_LIST_HEAD(struct list_head *list)

@@ -12,11 +12,13 @@
 #include <linux/err.h>
 #include "hashmap.h"
 
+#ifdef __GNUC__
 /* make sure libbpf doesn't use kernel-only integer typedefs */
 #pragma GCC poison u8 u16 u32 u64 s8 s16 s32 s64
 
 /* prevent accidental re-addition of reallocarray() */
 #pragma GCC poison reallocarray
+#endif
 
 /* start with 4 buckets */
 #define HASHMAP_MIN_CAP_BITS 2
@@ -109,7 +111,7 @@ static int hashmap_grow(struct hashmap *map)
 	if (new_cap_bits < HASHMAP_MIN_CAP_BITS)
 		new_cap_bits = HASHMAP_MIN_CAP_BITS;
 
-	new_cap = 1UL << new_cap_bits;
+	new_cap = ((size_t)1) << new_cap_bits;
 	new_buckets = calloc(new_cap, sizeof(new_buckets[0]));
 	if (!new_buckets)
 		return -ENOMEM;

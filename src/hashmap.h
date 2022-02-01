@@ -164,11 +164,20 @@ bool hashmap__find(const struct hashmap *map, const void *key, void **value);
  * @tmp: struct hashmap_entry * used as a temporary next cursor storage
  * @bkt: integer used as a bucket loop cursor
  */
+#ifdef __GNUC__
 #define hashmap__for_each_entry_safe(map, cur, tmp, bkt)		    \
 	for (bkt = 0; bkt < map->cap; bkt++)				    \
 		for (cur = map->buckets[bkt];				    \
 		     cur && ({tmp = cur->next; true; });		    \
 		     cur = tmp)
+#elif _MSC_VER
+#define hashmap__for_each_entry_safe(map, cur, tmp, bkt)   \
+    for (bkt = 0; bkt < map->cap; bkt++)                   \
+        for (cur = map->buckets[bkt];                      \
+             cur && ( tmp = cur->next, true );             \
+             cur = tmp)
+#endif
+
 
 /*
  * hashmap__for_each_key_entry - iterate over entries associated with given key

@@ -43,10 +43,22 @@
  * See bpf_prog_load() overload for example.
  */
 #define ___libbpf_cat(A, B) A ## B
+#ifdef __GNUC__
 #define ___libbpf_select(NAME, NUM) ___libbpf_cat(NAME, NUM)
+#else
+#define ___libbpf_select_impl(NAME, NUM) ___libbpf_cat(NAME, NUM)
+#define ___libbpf_select(NAME, NUM) ___libbpf_select_impl(NAME, NUM)
+#endif
 #define ___libbpf_nth(_1, _2, _3, _4, _5, _6, N, ...) N
+#ifdef __GNUC__
 #define ___libbpf_cnt(...) ___libbpf_nth(__VA_ARGS__, 6, 5, 4, 3, 2, 1)
 #define ___libbpf_overload(NAME, ...) ___libbpf_select(NAME, ___libbpf_cnt(__VA_ARGS__))(__VA_ARGS__)
+#else
+#define ___libbpf_cnt_impl(args) ___libbpf_nth args
+#define ___libbpf_cnt(...) ___libbpf_cnt_impl((__VA_ARGS__, 6, 5, 4, 3, 2, 1))
+#define ___libbpf_glue(x, y) x y
+#define ___libbpf_overload(NAME, ...) ___libbpf_glue(___libbpf_select(NAME, ___libbpf_cnt(__VA_ARGS__)), (__VA_ARGS__))
+#endif
 
 /* Helper macro to declare and initialize libbpf options struct
  *
@@ -61,6 +73,7 @@
  * including any extra padding, it with memset() and then assigns initial
  * values provided by users in struct initializer-syntax as varargs.
  */
+#ifndef _MSC_VER
 #define LIBBPF_OPTS(TYPE, NAME, ...)					    \
 	struct TYPE NAME = ({ 						    \
 		memset(&NAME, 0, sizeof(struct TYPE));			    \
@@ -69,5 +82,13 @@
 			__VA_ARGS__					    \
 		};							    \
 	})
+#else
+/* The MSVC compiler doesn't support function calls within the struct
+ * definition, but always zero initializes other fields.
+ */
+#define LIBBPF_OPTS(TYPE, NAME, ...)                               \
+    struct TYPE NAME =                                             \
+            {.sz = sizeof(struct TYPE), __VA_ARGS__};
+#endif
 
 #endif /* __LIBBPF_LIBBPF_COMMON_H */

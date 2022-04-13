@@ -7,7 +7,9 @@
 
 #include <stdarg.h>
 #include <stdbool.h>
+#ifdef __linux__
 #include <linux/btf.h>
+#endif
 #include <linux/types.h>
 
 #include "libbpf_common.h"

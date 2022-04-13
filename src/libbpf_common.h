@@ -16,7 +16,16 @@
 #define LIBBPF_API __attribute__((visibility("default")))
 #endif
 
+#ifdef __GNUC__
 #define LIBBPF_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#define LIBBPF_FORMAT_PRINTF(a,b) __attribute__((format(printf, a, b)))
+#define LIBBPF_ALIAS(a) __attribute__((alias(a)))
+#endif
+#ifdef _MSC_VER
+#define LIBBPF_DEPRECATED(msg)
+#define LIBBPF_FORMAT_PRINTF(a, b)
+#define LIBBPF_ALIAS(a)
+#endif
 
 /* Mark a symbol as deprecated when libbpf version is >= {major}.{minor} */
 #define LIBBPF_DEPRECATED_SINCE(major, minor, msg)			    \

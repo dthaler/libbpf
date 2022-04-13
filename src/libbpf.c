@@ -16,21 +16,30 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#ifdef __linux__
 #include <libgen.h>
+#endif
 #include <inttypes.h>
 #include <limits.h>
 #include <string.h>
+#ifdef __linux__
 #include <unistd.h>
 #include <endian.h>
+#endif
 #include <fcntl.h>
 #include <errno.h>
 #include <ctype.h>
+#ifdef __linux__
 #include <asm/unistd.h>
+#endif
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <linux/bpf.h>
+#ifdef __linux__
 #include <linux/btf.h>
+#endif
 #include <linux/filter.h>
+#ifdef __linux__
 #include <linux/limits.h>
 #include <linux/perf_event.h>
 #include <linux/ring_buffer.h>
@@ -38,8 +47,10 @@
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#endif
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef __linux__
 #include <sys/vfs.h>
 #include <sys/utsname.h>
 #include <sys/resource.h>
@@ -65,8 +76,6 @@
  * compilation if user enables corresponding warning. Disable it explicitly.
  */
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
-
-#define __printf(a, b)	__attribute__((format(printf, a, b)))
 
 static struct bpf_map *bpf_object__add_map(struct bpf_object *obj);
 static bool prog_is_subprog(const struct bpf_object *obj, const struct bpf_program *prog);
@@ -219,7 +228,7 @@ libbpf_print_fn_t libbpf_set_print(libbpf_print_fn_t fn)
 	return old_print_fn;
 }
 
-__printf(2, 3)
+LIBBPF_FORMAT_PRINTF(2, 3)
 void libbpf_print(enum libbpf_print_level level, const char *format, ...)
 {
 	va_list args;
@@ -239,6 +248,7 @@ void libbpf_print(enum libbpf_print_level level, const char *format, ...)
 
 static void pr_perm_msg(int err)
 {
+#ifdef RLIMIT_MEMLOCK
 	struct rlimit limit;
 	char buf[100];
 
@@ -261,6 +271,9 @@ static void pr_perm_msg(int err)
 
 	pr_warn("permission error while running as root; try raising 'ulimit -l'? current value: %s\n",
 		buf);
+#else
+    pr_warn("permission error while running as root\n");
+#endif
 }
 
 #define STRERR_BUFSIZE  128
@@ -289,6 +302,7 @@ int libbpf_set_strict_mode(enum libbpf_strict_mode mode)
 	/* as of v1.0 libbpf_set_strict_mode() is a no-op */
 	return 0;
 }
+#endif
 
 __u32 libbpf_major_version(void)
 {
@@ -309,6 +323,7 @@ const char *libbpf_version_string(void)
 #undef __S
 }
 
+#ifdef __linux__
 enum reloc_type {
 	RELO_LD64,
 	RELO_CALL,
@@ -994,7 +1009,11 @@ find_struct_ops_kern_types(const struct btf *btf, const char *tname,
 
 static bool bpf_map__is_struct_ops(const struct bpf_map *map)
 {
+#ifdef BPF_MAP_TYPE_STRUCT_OPS
 	return map->def.type == BPF_MAP_TYPE_STRUCT_OPS;
+#else
+    return false;
+#endif
 }
 
 /* Init the map's fields that depend on kern_btf */
@@ -7251,10 +7270,11 @@ static int bpf_object_unload(struct bpf_object *obj)
 	return 0;
 }
 
-int bpf_object__unload(struct bpf_object *obj) __attribute__((alias("bpf_object_unload")));
+int bpf_object__unload(struct bpf_object *obj) LIBBPF_ALIAS("bpf_object_unload");
 
 static int bpf_object__sanitize_maps(struct bpf_object *obj)
 {
+#ifdef BPF_F_MMAPABLE
 	struct bpf_map *m;
 
 	bpf_object__for_each_map(m, obj) {
@@ -7263,6 +7283,7 @@ static int bpf_object__sanitize_maps(struct bpf_object *obj)
 		if (!kernel_supports(obj, FEAT_ARRAY_MMAP))
 			m->def.map_flags ^= BPF_F_MMAPABLE;
 	}
+#endif
 
 	return 0;
 }
@@ -12395,3 +12416,4 @@ void bpf_object__destroy_skeleton(struct bpf_object_skeleton *s)
 	free(s->progs);
 	free(s);
 }
+#endif

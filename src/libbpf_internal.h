@@ -14,7 +14,9 @@
 #include <errno.h>
 #include <linux/err.h>
 #include <fcntl.h>
+#ifdef __linux__
 #include <unistd.h>
+#endif
 #include "relo_core.h"
 
 /* make sure libbpf doesn't use kernel-only integer typedefs */

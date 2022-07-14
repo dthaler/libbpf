@@ -22,7 +22,7 @@
 #define LIBBPF_ALIAS(a) __attribute__((alias(a)))
 #endif
 #ifdef _MSC_VER
-#define LIBBPF_DEPRECATED(msg)
+#define LIBBPF_DEPRECATED(msg) __declspec(deprecated(msg))
 #define LIBBPF_FORMAT_PRINTF(a, b)
 #define LIBBPF_ALIAS(a)
 #endif
